@@ -1,0 +1,1 @@
+[JdbcProxy] Wed May 02 21:22:32 CST 2018// Class not found ..., Strace [java.lang.ClassNotFoundException: com.microsoft.sqlserver.jdbc.SQLServerDriver]
