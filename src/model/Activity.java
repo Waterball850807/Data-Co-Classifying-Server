@@ -24,19 +24,18 @@ public class Activity {
 	}
 	
 	public Activity(int id, String title, Date startDate, Date endDate, Date updatedDate, String content,
-			String category, String source, String link, String address, String contact) {
-		this(title, startDate, endDate, updatedDate, contact, category, source, link, address, contact);
+			String source, String link, String address, String contact) {
+		this(title, startDate, endDate, updatedDate, contact, source, link, address, contact);
 		this.id = id;
 	}
 	
 	public Activity(String title, Date startDate, Date endDate, Date updatedDate, String content,
-			String category, String source, String link, String address, String contact) {
+			String source, String link, String address, String contact) {
 		this.title = title;
 		this.startDate = startDate;
 		this.endDate = endDate;
 		this.updatedDate = updatedDate;
 		this.content = content;
-		this.category = category;
 		this.source = source;
 		this.link = link;
 		this.address = address;
@@ -51,7 +50,6 @@ public class Activity {
 	private Date endDate;
 	private Date updatedDate;
 	private String content;
-	private String category;
 	private String source;
 	private String link;
 	private String address;
@@ -114,14 +112,6 @@ public class Activity {
 		this.address = address;
 	}
 
-	public String getCategory() {
-		return category;
-	}
-
-	public void setCategory(String category) {
-		this.category = category;
-	}
-
 	public String getSource() {
 		return source;
 	}
@@ -153,7 +143,7 @@ public class Activity {
 	@Override
 	public String toString() {
 		return "Activity [id=" + id + ", title=" + title + ", startDate=" + startDate + ", endDate=" + endDate
-				+ ", updatedDate=" + updatedDate + ", content=" + content + ", category=" + category + ", source="
+				+ ", updatedDate=" + updatedDate + ", content=" + content + ", source="
 				+ source + ", link=" + link + ", address=" + address + ", contact=" + contact + "]";
 	}
 }

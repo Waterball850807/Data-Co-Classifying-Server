@@ -5,13 +5,18 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.google.gson.Gson;
+
+import server.client.ChatMessage;
 import server.protocol.Protocol;
 import server.protocol.ProtocolFactory;
 import server.workspace.Workspace;
+import utils.GsonUtils;
 
 public class RequestParser {
 	private Map<String, BiConsumer<String, Protocol>> apiMatchingMap = new HashMap<>();
 	private Workspace workspace;
+	private Gson gson = GsonUtils.getGson();
 	
 	public RequestParser(Workspace workspace){
 		this.workspace = workspace;
@@ -37,8 +42,8 @@ public class RequestParser {
 	}
 	
 	private void sendChat(String id, Protocol protocol){
-		String msg = protocol.getParameter("msg");
-		workspace.sendChat(id, msg);
+		ChatMessage msg =  gson.fromJson(protocol.getData(), ChatMessage.class);
+		workspace.sendChat(id, msg.getContent());
 	}
 	
 	public void attachActivityTags(String id, Protocol protocol){
@@ -56,4 +61,8 @@ public class RequestParser {
 						.accept(clientId, protocol);
 	}
 
+	public static void main(String[] argv){
+		ChatMessage msg =  GsonUtils.getGson().fromJson("{\"content\":\"hello everyone!\"}", ChatMessage.class);
+		System.out.println(msg.getContent());
+	}
 }

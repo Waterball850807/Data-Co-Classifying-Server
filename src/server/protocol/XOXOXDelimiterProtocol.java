@@ -24,13 +24,13 @@ public class XOXOXDelimiterProtocol implements Protocol{
 	}
 
 	public XOXOXDelimiterProtocol(String content) {
-		this.content = content;
+		this.content = content = content.trim();
 		
 		//e.g. event?key=value&key=valueXOXOXstatusXOXOX{data}
 		String[] snippets = content.split(DELIMITER);
 		String[] firstSegment = snippets[0].split("\\?") ;
 		event = firstSegment[0];
-		parameters = parseParameters(firstSegment[1]);
+		parameters = firstSegment.length >= 2 ? parseParameters(firstSegment[1]) : null;
 		status = snippets[1];
 		data = snippets[2];
 		logger.log(getClass(), getLogText());
@@ -38,14 +38,18 @@ public class XOXOXDelimiterProtocol implements Protocol{
 	
 	public String getLogText(){
 		StringBuilder paramStrb = new StringBuilder();
-		for (String key : parameters.keySet())
-			paramStrb.append("    ").append(key).append(" : ")
-				.append(parameters.get(key)).append("\n");
+		paramStrb.append("-");
+		if (parameters != null)
+			for (String key : parameters.keySet())
+				paramStrb.append("    ").append(key).append(" : ")
+					.append(parameters.get(key)).append("\n");
 		return String.format("%nEvent: %s%n Parameters: %n%s%n Status: %s%n Data: %s%n", 
 							event, paramStrb.toString(), status, data);
 	}
 	
 	public static String paramtersToString(Map<String, String> parameters){
+		if (parameters == null)
+			return null;
 		StringBuilder paramStrb = new StringBuilder();
 		for (String key : parameters.keySet())
 			paramStrb.append(key).append("=").append(parameters.get(key)).append("&");
@@ -65,6 +69,8 @@ public class XOXOXDelimiterProtocol implements Protocol{
 	
 	@Override
 	public String getParameter(String key) {
+		if (parameters == null)
+			return null;
 		return parameters.get(key);
 	}
 	

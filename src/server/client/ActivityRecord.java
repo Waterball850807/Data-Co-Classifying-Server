@@ -17,11 +17,10 @@ public class ActivityRecord {
 	public void setActivity(Activity activity) {
 		this.activity = activity;
 	}
-	public EditionRecord getEditionRecords() {
+	public EditionRecord getEditionRecord() {
 		return editionRecords;
 	}
 	public void setEditionRecords(EditionRecord editionRecords) {
 		this.editionRecords = editionRecords;
 	}
-
 }

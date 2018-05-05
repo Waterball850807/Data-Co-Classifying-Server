@@ -21,17 +21,16 @@ public class JdbcActivityRepository implements ActivityRepository{
 		PreparedStatement st = null;
 		try {
 			st = con.prepareStatement("INSERT INTO Activities VALUES("
-					 + "?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+					 + "?, ?, ?, ?, ?, ?, ?, ?, ?)");
 			st.setString(1, activity.getTitle());
 			st.setString(2, Activity.dateToString(activity.getStartDate()));
 			st.setString(3, Activity.dateToString(activity.getEndDate()));
 			st.setString(4, Activity.dateToString(activity.getUpdatedDate()));
 			st.setString(5, activity.getContent());
-			st.setString(6, activity.getCategory());
-			st.setString(7, activity.getSource());
-			st.setString(8, activity.getLink());
-			st.setString(9, activity.getAddress());
-			st.setString(10, activity.getContact());
+			st.setString(6, activity.getSource());
+			st.setString(7, activity.getLink());
+			st.setString(8, activity.getAddress());
+			st.setString(9, activity.getContact());
 			int rowCount = st.executeUpdate();
 			activity.setId(rowCount);
 			st.close();
@@ -51,9 +50,10 @@ public class JdbcActivityRepository implements ActivityRepository{
 		try {
 			st = con.createStatement();
 			rs = st.executeQuery("SELECT * FROM Activities WHERE id = " + id);
+			rs.next();
 			activity = resultToActivity(rs);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			throw new IllegalArgumentException(e);
 		} finally {
 	          if (st != null) try { st.close(); } catch(Exception e) {}
 	          if (rs != null) try { rs.close(); } catch(Exception e) {}
@@ -86,24 +86,24 @@ public class JdbcActivityRepository implements ActivityRepository{
 		Date endDate = Activity.parseDate(rs.getString(4));
 		Date updatedDate = Activity.parseDate(rs.getString(5));
 		String content = rs.getString(6);
-		String category = rs.getString(7);
-		String source = rs.getString(8);
-		String link = rs.getString(9);
-		String address = rs.getString(10);
-		String contact = rs.getString(11);
+		String source = rs.getString(7);
+		String link = rs.getString(8);
+		String address = rs.getString(9);
+		String contact = rs.getString(10);
 		return new Activity(id, title, startDate, endDate, updatedDate, 
-				content, category, source, link, address, contact);
+				content, source, link, address, contact);
 	}
 	
 	public void attachTagsToActivity(int activityId, int[] tagIds){
-		String query = "INSERT INTO ActivityClassifications (activityId, tagId) VALUES ";
 		StringBuilder strb = new StringBuilder();
-		strb.append(query);
+		//remove all the classification to the activity first followed by inserting new classifications
+		strb.append("DELETE FROM ActivityClassifications WHERE activityId = " + activityId + ";");
+		strb.append("INSERT INTO ActivityClassifications (activityId, tagId) VALUES ");
 		
 		for (int tagId : tagIds)
 			strb.append("(").append(activityId).append(",").append(tagId).append(")").append(",");
 		
-		query = strb.substring(0, strb.length()-1);
+		String query = strb.substring(0, strb.length()-1);
 		Statement st = null;
 		try {
 			st = con.createStatement();
@@ -155,12 +155,13 @@ public class JdbcActivityRepository implements ActivityRepository{
 	public static void main(String[] argv){
 		//testing program
 		JdbcProxy jdbcProxy = new JdbcProxy(new JdbcActivityRepository());
-		int[] tagIds = new int[]{1, 2};
-		//jdbcProxy.attachTagsToActivity(1, tagIds);
+		int[] tagIds = new int[]{2};
+		jdbcProxy.attachTagsToActivity(1, tagIds);
 		for (ActivityTag tag : jdbcProxy.getActivityTags())
 			System.out.println(tag.getName());
+		/*
 		System.out.println(jdbcProxy.getActivityTag(1).getName());
-		System.out.println(jdbcProxy.getActivityTag(2).getName());
+		System.out.println(jdbcProxy.getActivityTag(2).getName());*/
 	}
 
 

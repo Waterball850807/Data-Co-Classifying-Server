@@ -1,9 +1,6 @@
 package server;
 
-import java.util.Date;
-
 import org.apache.mina.core.service.IoHandlerAdapter;
-import org.apache.mina.core.session.IdleStatus;
 import org.apache.mina.core.session.IoSession;
 
 import server.client.Client;
@@ -26,6 +23,7 @@ public class ServerHandler extends IoHandlerAdapter{
     public void exceptionCaught( IoSession session, Throwable cause ) throws Exception
     {
         cause.printStackTrace();
+        session.write("Error: " + cause.getMessage() + ".");
     }
 
 	@Override
