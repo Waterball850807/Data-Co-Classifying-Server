@@ -22,18 +22,18 @@ public class TaskDistributor {
 		this.workSpaceRepository = workSpaceRepository;
 	}
 
-	public int getWorkingActivityId(String userId){
+	public synchronized int getWorkingActivityId(String userId){
 		if (!userToActivityMap.containsKey(userId))
 			return -1;
 		return userToActivityMap.get(userId);
 	}
 	
-	public Activity getWorkingActivity(String userId){
+	public synchronized Activity getWorkingActivity(String userId){
 		int workingAId = getWorkingActivityId(userId);
 		return activityRepository.getActivity(workingAId);
 	}
 	
-	public boolean isActivityHolded(int activityId){
+	public synchronized boolean isActivityHolded(int activityId){
 		return activityToUserMap.get(activityId) != null;
 	}
 	
@@ -59,12 +59,11 @@ public class TaskDistributor {
 			
 			int toId = activities.get(toIndex).getId();
 			moveUser(userId, fromId, toId);
+			return activities.get(toIndex);
 		}
-		
-		return activities.get(toIndex);
 	}
 	
-	public Activity moveToActivity(String userId, int activityId){
+	public synchronized Activity moveToActivity(String userId, int activityId){
 		Activity activity = activityRepository.getActivity(activityId);
 		int fromId = userToActivityMap.get(userId);
 		moveUser(userId, fromId, activityId);

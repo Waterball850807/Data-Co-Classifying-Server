@@ -28,6 +28,7 @@ public class RequestParser {
 		apiMatchingMap.put(Workspace.EV_ACTIVITY, (id, protocol) -> getActivity(id, protocol));
 		apiMatchingMap.put(Workspace.EV_CHAT, (id, protocol) -> sendChat(id, protocol));
 		apiMatchingMap.put(Workspace.EV_TAG, (id, protocol) -> attachActivityTags(id, protocol));
+		apiMatchingMap.put(Workspace.EV_GET_TAGS, (id, protocol) -> workspace.loadAllActivityTags(id));
 	}
 
 	private void signIn(String id, Protocol protocol){

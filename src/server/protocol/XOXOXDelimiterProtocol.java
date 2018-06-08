@@ -49,7 +49,7 @@ public class XOXOXDelimiterProtocol implements Protocol{
 	
 	public static String paramtersToString(Map<String, String> parameters){
 		if (parameters == null)
-			return null;
+			return "";
 		StringBuilder paramStrb = new StringBuilder();
 		for (String key : parameters.keySet())
 			paramStrb.append(key).append("=").append(parameters.get(key)).append("&");

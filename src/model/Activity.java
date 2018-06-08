@@ -25,7 +25,7 @@ public class Activity {
 	
 	public Activity(int id, String title, Date startDate, Date endDate, Date updatedDate, String content,
 			String source, String link, String address, String contact) {
-		this(title, startDate, endDate, updatedDate, contact, source, link, address, contact);
+		this(title, startDate, endDate, updatedDate, content, source, link, address, contact);
 		this.id = id;
 	}
 	

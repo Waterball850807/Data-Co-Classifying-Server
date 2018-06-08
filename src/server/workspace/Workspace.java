@@ -1,11 +1,13 @@
 package server.workspace;
 
+
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 
@@ -30,14 +32,15 @@ public class Workspace {
 	public static String EV_CHAT = "chat";
 	public static String EV_ACTIVITY = "activity";
 	public static String EV_TAG = "tag";
+	public static String EV_GET_TAGS = "getTags";
 	private static int WORKING_QUEUE_SIZE = 10000; 
 	private static Gson gson = new Gson();
 	
 	private ActivityRepository activityRepository;
 	private ProtocolFactory protocolFactory;
 	private WorkSpaceRepository workSpaceRepository;
-	private Map<String, Client> clients = new HashMap<>();  //<client's id, client>
-	private Map<String, User> users = new HashMap<>(); //<client's id, user>
+	private Map<String, Client> clients = Collections.synchronizedMap(new HashMap<>());  //<client's id, client>
+	private Map<String, User> users = Collections.synchronizedMap(new HashMap<>()); //<client's id, user>
 	private TaskDistributor taskDistributor;
 	
 	public Workspace(ActivityRepository activityRepository, 
@@ -57,33 +60,34 @@ public class Workspace {
 	public void signIn(String id, String name){
 		try{
 			Client client = clients.get(id);
-			User user  = new User(client.getId(), name);
-			users.put(client.getId(), user);
-			String userJson = gson.toJson(user);
-			Protocol success = protocolFactory.createProtocol(EV_SIGNIN, SUCCESS, null, userJson);
-			sendChat(client.getId(), name + " 登入了！");
-			client.broadcast(success.toString());
+			synchronized (client) 
+			{
+				User user  = new User(client.getId(), name);
+				users.put(client.getId(), user);
+				String userJson = gson.toJson(user);
+				Protocol success = protocolFactory.createProtocol(EV_SIGNIN, SUCCESS, null, userJson);
+				sendChat(client.getId(), name + " 登入了！");
+				client.broadcast(success.toString());
+			}
 		}catch (Exception e) {
 			broadcastErrorToClient(id, ERR_UNKNOWN, e.getMessage());
 		}
 	}
 
 	public void removeClient(Client client) {
-
 		synchronized (client) {
 			clients.remove(client.getId());
+			if (users.containsKey(client.getId()))
+			{
+				User user = users.get(client.getId());
+				sendChat(client.getId(), user.getName() + " 登出了！");
+				taskDistributor.removeUser(user.getId());
+				users.remove(user.getId());
+				log.debug("Client [" + client.getId() + "] : " + user.getName() + "  signed out." );
+			}
+			else
+				log.debug("Client [" + client.getId() + "] signed out." );
 		}
-		
-		if (users.containsKey(client.getId()))
-		{
-			User user = users.get(client.getId());
-			sendChat(client.getId(), user.getName() + " 登出了！");
-			taskDistributor.removeUser(user.getId());
-			users.remove(user.getId());
-			log.debug("Client [" + client.getId() + "] : " + user.getName() + "  signed out." );
-		}
-		else
-			log.debug("Client [" + client.getId() + "] signed out." );
 	}
 
 	public void sendChat(String senderId, String msg) {
@@ -112,87 +116,103 @@ public class Workspace {
 				else
 				{
 					Client client = clients.get(senderId);
-					User user = users.get(senderId);
-					log.debug("Attach tags request from user: " + user.getName() );
-					ActivityTag[] activityTags = new ActivityTag[tagIds.length];
-					Activity activity = null;
-					
-					try{
-						activity = activityRepository.getActivity(activityId);
-					}catch (IllegalArgumentException e) {
-						broadcastErrorToClient(senderId, ERR_ACTIVITY_ID_NOT_EXISTS, e.getMessage());
-						return;
-					}
-					
-					activityRepository.attachTagsToActivity(activityId, tagIds);
-					StringBuilder tagNamesStrb = new StringBuilder();
-					for (int i = 0 ; i < tagIds.length ; i ++)
+					synchronized (client) 
 					{
-						ActivityTag tag = activityRepository.getActivityTag(tagIds[i]);
-						activityTags[i] = tag;
-						String tagName = tag.getName();
-						tagNamesStrb.append(tagName).append(",");
-					}
-					workSpaceRepository.addEditRecordItem(activity, new Item(user, activityTags));
-					
-					String tagNames = tagNamesStrb.substring(0, tagNamesStrb.length()-1);
-					sendChat(senderId, user.getName() + " 把 活動[" + activity.getTitle() + 
-									"] 分類成  [" +tagNames + "]");
+						User user = users.get(senderId);
+						log.debug("Attach tags request from user: " + user.getName() );
+						ActivityTag[] activityTags = new ActivityTag[tagIds.length];
+						Activity activity = null;
+						
+						try{
+							activity = activityRepository.getActivity(activityId);
+						}catch (IllegalArgumentException e) {
+							broadcastErrorToClient(senderId, ERR_ACTIVITY_ID_NOT_EXISTS, e.getMessage());
+							return;
+						}
+						
+						activityRepository.attachTagsToActivity(activityId, tagIds);
+						StringBuilder tagNamesStrb = new StringBuilder();
+						for (int i = 0 ; i < tagIds.length ; i ++)
+						{
+							ActivityTag tag = activityRepository.getActivityTag(tagIds[i]);
+							activityTags[i] = tag;
+							String tagName = tag.getName();
+							tagNamesStrb.append(tagName).append(",");
+						}
+						workSpaceRepository.addEditRecordItem(activity, new Item(user, activityTags));
+						
+						String tagNames = tagNamesStrb.substring(0, tagNamesStrb.length()-1);
+						sendChat(senderId, user.getName() + " 把 活動[" + activity.getTitle() + 
+										"] 分類成  [" +tagNames + "]");
 
-					log.debug("Tags attached on activity " + activityId + " <- " + tagNames);
-					Protocol success = protocolFactory.createProtocol(EV_TAG, SUCCESS, null, null);
-					client.broadcast(success.toString());
+						log.debug("Tags attached on activity " + activityId + " <- " + tagNames);
+						Protocol success = protocolFactory.createProtocol(EV_TAG, SUCCESS, null, null);
+						client.broadcast(success.toString());
+					}
 				}
 			}
 		}catch (Exception e) {
 			broadcastErrorToClient(senderId, ERR_UNKNOWN, e.getMessage());
 		}
 	}
-
+	
 	public void nextActivityRequest(String clientId, int activityId, boolean clean) {
 		try{
 			if (validateSignIn(clientId)) 
 			{
 				Client client = clients.get(clientId);
-				User user = users.get(clientId);
-				log.debug("Next activity request from user: " + user.getName() );
-				Activity activity = null;
-				try{
-					if (activityId == -1)  //next as default
-						activity = taskDistributor.moveToNext(clientId, clean);
-					else
-					{
-						if (taskDistributor.isActivityHolded(activityId))
-						{
-							broadcastErrorToClient(clientId, ERR_ACTIVITY_BEING_HOLDED, null);
-							return;
-						}
+				synchronized (client) 
+				{
+					User user = users.get(clientId);
+					log.debug("Next activity request from user: " + user.getName() );
+					Activity activity = null;
+					try{
+						if (activityId == -1)  //next as default
+							activity = taskDistributor.moveToNext(clientId, clean);
 						else
-							activity = taskDistributor.moveToActivity(clientId, activityId);
+						{
+							if (taskDistributor.isActivityHolded(activityId))
+							{
+								broadcastErrorToClient(clientId, ERR_ACTIVITY_BEING_HOLDED, null);
+								return;
+							}
+							else
+								activity = taskDistributor.moveToActivity(clientId, activityId);
+						}
+					}catch (IllegalArgumentException e) {
+						broadcastErrorToClient(clientId, ERR_ACTIVITY_ID_NOT_EXISTS, e.getMessage());
+						return;
 					}
-				}catch (IllegalArgumentException e) {
-					broadcastErrorToClient(clientId, ERR_ACTIVITY_ID_NOT_EXISTS, e.getMessage());
-					return;
+					
+					EditionRecord editionRecord = workSpaceRepository.getEditionRecord(activity.getId());
+					ActivityRecord activityRecord = new ActivityRecord(activity, editionRecord);
+					String json = gson.toJson(activityRecord);
+					Protocol protocol = protocolFactory.createProtocol(EV_ACTIVITY, SUCCESS, null, json);
+					client.broadcast(protocol.toString());
 				}
-				
-				EditionRecord editionRecord = workSpaceRepository.getEditionRecord(activity.getId());
-				ActivityRecord activityRecord = new ActivityRecord(activity, editionRecord);
-				String json = gson.toJson(activityRecord);
-				Protocol protocol = protocolFactory.createProtocol(EV_ACTIVITY, SUCCESS, null, json);
-				client.broadcast(protocol.toString());
 			}
 		}catch (Exception e) {
 			broadcastErrorToClient(clientId, ERR_UNKNOWN, e.getMessage());
 		}
 	}
 	
+	public void loadAllActivityTags(String clientId){
+		Client client = clients.get(clientId);
+		try{
+			ActivityTag[] activityTags = activityRepository.getActivityTags();
+			String json = gson.toJson(activityTags);
+			Protocol success = protocolFactory.createProtocol(EV_GET_TAGS, SUCCESS, null, json);
+			client.broadcast(success.toString());
+		}catch (Exception e) {
+			broadcastErrorToClient(clientId, 0, e.getMessage());
+		}
+	}
+	
 	private void broadcastToAll(String msg){
 		log.debug("Broadcasting to all: " + msg );
 		clients.values().parallelStream().forEach(c -> {
-			synchronized (c) {
-				if (c.isActive() && clients.containsKey(c.getId())) 
-					c.broadcast(msg);
-			}
+			if (c.isActive() && clients.containsKey(c.getId())) 
+				c.broadcast(msg);
 		});
 	}
 	
@@ -211,12 +231,20 @@ public class Workspace {
 	}
 	
 	private boolean validateSignIn(String clientId){
-		if (!users.containsKey(clientId))
+		if(clients.containsKey(clientId))
 		{
-			broadcastErrorToClient(clientId, ERR_SIGN_IN_FIRST, null);
-			return false;
+			Client client = clients.get(clientId);
+			synchronized (client) {
+				if (!users.containsKey(clientId))
+				{
+					broadcastErrorToClient(clientId, ERR_SIGN_IN_FIRST, null);
+					return false;
+				}
+				return true;
+			}
 		}
-		return true;
+		else
+			return false;
 	}
 	
 	private void broadcastErrorToClient(String clientId, int errorNumber, String additionalMsg){

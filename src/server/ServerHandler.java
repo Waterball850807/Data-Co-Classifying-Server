@@ -22,8 +22,11 @@ public class ServerHandler extends IoHandlerAdapter{
 	@Override
     public void exceptionCaught( IoSession session, Throwable cause ) throws Exception
     {
-        cause.printStackTrace();
-        session.write("Error: " + cause.getMessage() + ".");
+		if (session.isActive())
+		{
+			cause.printStackTrace();
+			session.write("Error: " + cause.getMessage() + ".");
+		}
     }
 
 	@Override

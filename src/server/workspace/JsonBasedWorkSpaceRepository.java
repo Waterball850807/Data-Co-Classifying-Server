@@ -98,9 +98,11 @@ public class JsonBasedWorkSpaceRepository implements WorkSpaceRepository{
 	}
 	
 	public static void main(String[] argv){
+		
 		User testUser = new User("1", "testUser");
 		User user2 = new User("u2", "ja");
 		WorkSpaceRepository wRepository = new JsonBasedWorkSpaceRepository();
+		EditionRecord editionRecord = wRepository.getEditionRecord(-1);
 		Activity activity = new Activity();
 		activity.setId(1);
 		activity.setTitle("test");
